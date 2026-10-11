@@ -3,8 +3,9 @@
 ## Project Setup
 
 1. Download the Million Song Dataset subset.
+   Create the folder "data"
 2. Maintain the following folder structure:
-
+    Move the "MillionSongSubet" inside "data" folder
 ```text
 TuneX/
 ├── data/
