@@ -1,50 +1,24 @@
 # Symphonix
 
-Peer-to-peer synchronized music listening with ML-powered music discovery.
+**Synchronized music streaming for shared listening experiences.**
 
-## Core components
-- **Frontend:** React + Vite; music player, spaces, LAN/P2P connections, playback synchronization.
-- **Backend:** Django REST Framework; catalog, listening history, clustering, K-NN, audio analysis, recommendations.
-- **Dataset:** Million Song Dataset Subset for metadata/features. It contains **no playable audio**.
-- **Demo audio:** 20 user-provided MP3 files for real playback and P2P streaming.
+Symphonix is a peer-to-peer music streaming application that enables people on the same network to listen to music together in real time. Users can create or join listening spaces, synchronize playback across devices, and share music directly between peers.
 
-## Data placement
-```text
-backend/data/raw/millionsongsubset/  # Extract the 1.8 GB subset here
-backend/data/audio/demo/             # Place the 20 MP3 files here
-```
+## Features
 
-Keep downloaded data and generated artifacts out of version control.
+- **Synchronized Playback** — Coordinate play, pause, seek, and track changes across connected devices.
+- **Listening Spaces** — Create a space as the host or join an existing space as a participant.
+- **Peer-to-Peer Streaming** — Transfer audio directly between devices using WebRTC, reducing dependence on backend media delivery during playback.
+- **Real-Time Communication** — Exchange playback commands and connection information to keep participants in sync.
+- **Host-Controlled Sessions** — Maintain a shared playback timeline with the host as the authoritative source of playback state.
+- **Cross-Device Experience** — Enjoy shared listening through a responsive web interface.
 
-## Data flow
-1. Backend ingests dataset metadata/features and analyzes demo MP3s.
-2. Backend builds cluster assignments, a K-NN index, and audio-analysis features.
-3. React requests catalog entries and recommendations from Django.
-4. Devices establish a peer connection; the host sends audio and playback state directly to participants.
-5. Frontend submits listening events to Django when the API is reachable.
+## Tech Stack
 
-## Documentation
-- [Architecture](docs/architecture.md)
-- [Phase 1 Specification](docs/phase1.md)
-- [UI Guidelines](docs/UI.md)
-- [Frontend plan](frontend/docs/plan.md)
-- [Backend plan](backend/docs/plan.md)
-- [Implementation instructions](AGENTS.md)
+- **Frontend:** React, Vite
+- **Backend:** Django
+- **Networking:** WebRTC Data Channels, WebSocket Signaling
 
-## Quick Start (Phase 1)
+## Vision
 
-### 1. Run Django Backend
-```bash
-cd backend
-uv run python manage.py runserver 8000
-```
-
-### 2. Run React Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Open `http://localhost:5173` in two browser windows or devices. Create a space in Window 1, copy the 6-character room code, and join from Window 2 to verify WebRTC signaling, P2P test ping, direct audio transfer, and synchronized playback!
-
+Turn individual listening into a synchronized, shared music experience — one space, multiple devices, one rhythm.
