@@ -5,8 +5,32 @@ build/
 dist/
 wheels/
 *.egg-info
+*.sqlite3
+.venv/
+env/
+venv/
 
+# Symphonix Datasets, Audio, and ML artifacts (Must NOT be in git)
 data/
+backend/data/
+backend/audio/
+backend/artifacts/
+backend/raw/
+frontend/public/audio/
+MillionSongSubset/
+*.mp3
+*.wav
+*.h5
 
-# Virtual environments
-.venv
+# Node / Vite Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+.vite/
+
+# Environments & IDE
+.env
+.env.local
+*.log
+.DS_Store
+Thumbs.db
