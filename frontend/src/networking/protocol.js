@@ -1,19 +1,19 @@
-// Message Types for Symphonix WebRTC Peer-to-Peer Protocol
+
 export const MSG_TYPES = {
-  // Test Message (Milestone 4 verification)
+  // Testing connection health
   PING: 'PING',
   PONG: 'PONG',
 
-  // Audio Transfer
+  // Sending audio files
   AUDIO_META: 'AUDIO_META',
   AUDIO_CHUNK: 'AUDIO_CHUNK',
   AUDIO_TRANSFER_COMPLETE: 'AUDIO_TRANSFER_COMPLETE',
 
-  // Buffering & Readiness
+  // Checking if everyone is ready to play
   BUFFER_STATUS: 'BUFFER_STATUS',
   READY: 'READY',
 
-  // Playback Synchronization
+  // Keeping music playback in sync
   SCHEDULED_PLAY: 'SCHEDULED_PLAY',
   PAUSE: 'PAUSE',
   SEEK: 'SEEK',
@@ -22,7 +22,7 @@ export const MSG_TYPES = {
   PLAY_ACK: 'PLAY_ACK'
 };
 
-// Message Builders
+// Helpers to build messages
 export function createPingMessage(senderId) {
   return {
     type: MSG_TYPES.PING,
@@ -186,7 +186,7 @@ export function createPlayAckMessage(spaceId, participantId, trackId, generation
   };
 }
 
-// Validator
+// Check if an incoming message is valid
 export function validatePeerMessage(msg) {
   if (!msg || typeof msg !== 'object') return false;
   if (!msg.type || !Object.values(MSG_TYPES).includes(msg.type)) return false;

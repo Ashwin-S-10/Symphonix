@@ -1,6 +1,3 @@
-// Symphonix P2P Performance Metrics Collector
-// Tracks, computes, and supplies network, transfer, and playback synchronization metrics.
-
 export class PerformanceMetricsCollector {
   constructor() {
     this.reset();
@@ -11,29 +8,29 @@ export class PerformanceMetricsCollector {
     this.spaceCode = null;
     this.localPeerId = null;
 
-    // 1. Connection setup time
+    // Connection time
     this.joinInitiatedTimestamp = null;
-    this.peerDiscoveryTimestamps = new Map(); // peerId -> timestamp (host side)
-    this.connectionSetupTimes = new Map(); // peerId -> setupTimeMs
+    this.peerDiscoveryTimestamps = new Map();
+    this.connectionSetupTimes = new Map();
 
-    // 2. Signaling delay
-    this.signalingDelays = []; // array of delay ms
-    this.signalingHttpLatencies = []; // array of http latency ms
+    // Signaling delay
+    this.signalingDelays = [];
+    this.signalingHttpLatencies = [];
     this.lastSignalingDelay = null;
     this.pollingIntervalMs = 400;
 
-    // 3. Audio transfer throughput & 4. Transfer completion time
-    this.activeTransfers = new Map(); // key -> transfer state
-    this.completedTransfers = []; // completed transfer records
+    // Song transfer stats
+    this.activeTransfers = new Map();
+    this.completedTransfers = [];
 
-    // 5. Playback start skew
+    // Playback start accuracy
     this.lastTargetStartTime = null;
     this.lastHostActualStartTime = null;
-    this.playbackStartSkews = []; // array of skew ms
+    this.playbackStartSkews = [];
     this.lastPlaybackStartSkew = null;
 
-    // 6. Playback drift
-    this.driftSamples = []; // array of drift ms
+    // Playback drift over time
+    this.driftSamples = [];
     this.lastDriftMs = 0;
     this.maxDriftMs = 0;
 
@@ -62,9 +59,7 @@ export class PerformanceMetricsCollector {
     }
   }
 
-  // -------------------------------------------------------------
-  // 1. Connection setup time
-  // -------------------------------------------------------------
+  // --- Connection Setup Time ---
   markJoinInitiated(peerId = 'local') {
     this.joinInitiatedTimestamp = performance.now();
   }
@@ -100,9 +95,7 @@ export class PerformanceMetricsCollector {
     this._notifyListeners();
   }
 
-  // -------------------------------------------------------------
-  // 2. Signaling delay
-  // -------------------------------------------------------------
+  // --- Signaling Delay ---
   recordSignalingReceived(sig) {
     let delayMs = null;
     const now = Date.now();
@@ -128,9 +121,7 @@ export class PerformanceMetricsCollector {
     }
   }
 
-  // -------------------------------------------------------------
-  // 3 & 4. Audio transfer throughput & Transfer completion time
-  // -------------------------------------------------------------
+  // --- Audio Transfer Speed & Duration ---
   recordTransferStart(transferKey, trackId, peerId, totalBytes, role = 'sender') {
     const startTime = performance.now();
     this.activeTransfers.set(transferKey, {
@@ -146,7 +137,7 @@ export class PerformanceMetricsCollector {
   }
 
   recordChunkSent(peerId, bytes) {
-    // Recorded for throughput tracking
+    // Track chunk bytes sent
   }
 
   recordTransferComplete(transferKey, trackId, peerId, totalBytes, role, startTimeParam, endTimeParam) {
@@ -189,9 +180,7 @@ export class PerformanceMetricsCollector {
     return record;
   }
 
-  // -------------------------------------------------------------
-  // 5. Playback start skew
-  // -------------------------------------------------------------
+  // --- Playback Start Timing Offset ---
   recordScheduledPlayHost(targetStartTime, leadTimeMs = 400) {
     this.lastTargetStartTime = targetStartTime;
   }
@@ -226,9 +215,7 @@ export class PerformanceMetricsCollector {
     }
   }
 
-  // -------------------------------------------------------------
-  // 6. Playback drift
-  // -------------------------------------------------------------
+  // --- Playback Drift Over Time ---
   recordPlaybackDrift(driftMs) {
     this.lastDriftMs = driftMs;
     this.maxDriftMs = Math.max(this.maxDriftMs, Math.abs(driftMs));
@@ -237,11 +224,9 @@ export class PerformanceMetricsCollector {
     this._notifyListeners();
   }
 
-  // -------------------------------------------------------------
-  // Snapshot of core metrics for UI display
-  // -------------------------------------------------------------
+  // --- Summary for the UI ---
   getMetricsSnapshot(targetPeerId = null) {
-    // 1. Connection setup time
+    // Connection timing
     const peerId = targetPeerId || Array.from(this.connectedPeers)[0] || 'remote-peer';
     const setupTimeMs = this.connectionSetupTimes.get(peerId);
     const connectionSetupStr = setupTimeMs !== undefined && setupTimeMs !== null
@@ -250,7 +235,7 @@ export class PerformanceMetricsCollector {
         ? `${Math.round(performance.now() - this.joinInitiatedTimestamp)} ms (Handshake in progress)`
         : 'Awaiting connection';
 
-    // 2. Signaling delay
+    // Signaling latency
     let signalingDelayStr = 'Awaiting signaling';
     if (this.signalingDelays.length > 0) {
       const avg = Math.round(this.signalingDelays.reduce((a, b) => a + b, 0) / this.signalingDelays.length);
@@ -259,7 +244,7 @@ export class PerformanceMetricsCollector {
       signalingDelayStr = `${this.lastSignalingDelay ?? avg} ms (Avg: ${avg} ms, Min: ${min} ms, Max: ${max} ms)`;
     }
 
-    // 3 & 4. Audio transfer throughput & Transfer completion time
+    // Transfer speed and duration
     const lastTransfer = this.completedTransfers[this.completedTransfers.length - 1];
     let throughputStr = 'Awaiting audio transfer';
     let transferCompletionStr = 'Awaiting audio transfer';
@@ -274,7 +259,7 @@ export class PerformanceMetricsCollector {
       transferCompletionStr = `In progress (${elapsed}s elapsed)`;
     }
 
-    // 5. Playback start skew
+    // Start timing offset
     let playbackSkewStr = 'Awaiting scheduled playback';
     if (this.playbackStartSkews.length > 0) {
       const lastSkew = this.lastPlaybackStartSkew ?? this.playbackStartSkews[this.playbackStartSkews.length - 1];
@@ -283,7 +268,7 @@ export class PerformanceMetricsCollector {
       playbackSkewStr = `${lastSkew} ms (Avg: ${avgSkew} ms) - ${targetSyncNotice}`;
     }
 
-    // 6. Playback drift
+    // Playback drift
     let driftStr = '0 ms (Playback idle)';
     if (this.driftSamples.length > 0) {
       const absDrifts = this.driftSamples.map((d) => Math.abs(d));
@@ -317,8 +302,8 @@ export class PerformanceMetricsCollector {
     };
   }
 
-  // No-op to avoid breaking callers while removing console logging
-  printReport() {}
+  // Kept so any existing calls won't fail
+  printReport() { }
 }
 
 export const performanceMetrics = new PerformanceMetricsCollector();

@@ -1,11 +1,7 @@
-// Direct Host-to-Peer Chunked Audio Transfer Service
-// Slices audio files into binary chunks, transmits over WebRTC transfer data channel with backpressure,
-// and reassembles into Blob / Object URL with byte integrity verification.
-
 import { createAudioMetaMessage, createAudioTransferCompleteMessage, createReadyMessage } from './protocol';
 import { performanceMetrics } from './performanceMetrics';
 
-const CHUNK_SIZE = 16384; // 16 KB chunks
+const CHUNK_SIZE = 16384; // Send in 16 KB pieces
 
 export class AudioTransferService {
   constructor({ webrtcManager, onTransferProgress, onTransferComplete }) {
@@ -13,18 +9,18 @@ export class AudioTransferService {
     this.onTransferProgress = onTransferProgress;
     this.onTransferComplete = onTransferComplete;
 
-    // Incoming file reception state: trackId -> { meta, receivedChunks, receivedBytes }
+    // Keeps track of files currently downloading
     this.incomingTransfers = new Map();
   }
 
-  // HOST: Slices and transmits an MP3 to a remote peer over WebRTC
+  // Host: sends a song file to a peer
   async sendTrack(remotePeerId, spaceId, track, generationId) {
     const transferChannel = this.webrtcManager.getTransferChannel(remotePeerId);
     if (!transferChannel || transferChannel.readyState !== 'open') {
       throw new Error(`Data channel to peer ${remotePeerId} is not open`);
     }
 
-    // 1. Fetch/load the audio ArrayBuffer
+    // 1. Load the song data into memory
     const response = await fetch(track.audioUrl);
     if (!response.ok) {
       throw new Error(`Failed to load audio for ${track.title}`);
@@ -37,7 +33,7 @@ export class AudioTransferService {
 
     performanceMetrics.recordTransferStart(transferKey, track.id, remotePeerId, totalBytes, 'sender');
 
-    // 2. Send AUDIO_META over control channel
+    // 2. Send file details (name, size, chunk count) so the peer can prepare
     const metaMsg = createAudioMetaMessage(
       spaceId,
       track.id,
@@ -49,24 +45,24 @@ export class AudioTransferService {
     );
     this.webrtcManager.sendControlMessage(remotePeerId, metaMsg);
 
-    // Give a brief moment for participant to prepare buffers
+    // Brief pause so the receiver has time to set up
     await new Promise((r) => setTimeout(r, 50));
 
-    // 3. Stream binary chunks over transfer data channel with backpressure handling
-    transferChannel.bufferedAmountLowThreshold = 65536; // 64 KB threshold
+    // 3. Send chunks one by one, pausing if the channel gets full
+    transferChannel.bufferedAmountLowThreshold = 65536; // Pause when queue hits 64 KB
 
     for (let i = 0; i < chunkCount; i++) {
       const start = i * CHUNK_SIZE;
       const end = Math.min(start + CHUNK_SIZE, totalBytes);
       const chunkData = arrayBuffer.slice(start, end);
 
-      // Create a chunk packet with a 4-byte header for chunk index (Uint32)
+      // Prefix each piece with its index so the receiver can order them properly
       const packet = new Uint8Array(4 + chunkData.byteLength);
       const view = new DataView(packet.buffer);
-      view.setUint32(0, i, false); // Big-endian chunk index
+      view.setUint32(0, i, false); // Chunk number
       packet.set(new Uint8Array(chunkData), 4);
 
-      // Backpressure check: wait if buffer exceeds threshold
+      // Wait for the channel buffer to drain before sending more
       if (transferChannel.bufferedAmount > 65536) {
         await new Promise((resolve) => {
           const handler = () => {
@@ -92,7 +88,7 @@ export class AudioTransferService {
       }
     }
 
-    // 4. Send AUDIO_TRANSFER_COMPLETE over control channel
+    // 4. Let the peer know all chunks have been sent
     const completeMsg = createAudioTransferCompleteMessage(track.id, generationId, totalBytes);
     this.webrtcManager.sendControlMessage(remotePeerId, completeMsg);
 
@@ -110,7 +106,7 @@ export class AudioTransferService {
     return { totalBytes, chunkCount };
   }
 
-  // PARTICIPANT: Handles incoming AUDIO_META message
+  // Participant: set up storage for an incoming song
   handleAudioMeta(msg) {
     const startTime = performance.now();
     this.incomingTransfers.set(msg.trackId, {
@@ -130,16 +126,16 @@ export class AudioTransferService {
     );
   }
 
-  // PARTICIPANT: Handles incoming binary chunk from transfer data channel
+  // Participant: store each chunk as it arrives
   handleTransferChunk(remotePeerId, arrayBuffer) {
     if (arrayBuffer.byteLength < 4) return;
 
-    // Read 4-byte chunk index prefix
+    // Read the chunk index from the first 4 bytes
     const view = new DataView(arrayBuffer);
     const chunkIndex = view.getUint32(0, false);
     const chunkData = arrayBuffer.slice(4);
 
-    // Find active transfer
+    // Put the chunk into the matching transfer slot
     for (const [trackId, transfer] of this.incomingTransfers.entries()) {
       if (chunkIndex < transfer.meta.chunkCount && !transfer.chunks[chunkIndex]) {
         transfer.chunks[chunkIndex] = chunkData;
@@ -161,21 +157,21 @@ export class AudioTransferService {
     }
   }
 
-  // PARTICIPANT: Handles incoming AUDIO_TRANSFER_COMPLETE message
+  // Participant: finish transfer and verify the file
   handleTransferComplete(remotePeerId, msg) {
     const transfer = this.incomingTransfers.get(msg.trackId);
     if (!transfer) return null;
 
-    // Verify all chunks received
+    // Assemble all chunks into a playable audio file
     const validChunks = transfer.chunks.filter(Boolean);
     const blob = new Blob(validChunks, { type: 'audio/mpeg' });
 
-    // Verify byte count
+    // Double check that the file size matches the original
     const isIntegrityVerified = blob.size === transfer.meta.fileSize;
     const objectUrl = URL.createObjectURL(blob);
     const completionTime = performance.now();
 
-    // Record audio transfer throughput and completion time metrics
+    // Save transfer speed and duration stats
     performanceMetrics.recordTransferComplete(
       msg.trackId,
       msg.trackId,
@@ -186,7 +182,7 @@ export class AudioTransferService {
       completionTime
     );
 
-    // Acknowledge readiness back to host
+    // Let the host know we are ready to play
     const readyMsg = createReadyMessage(
       transfer.meta.spaceId,
       this.webrtcManager.peerId,

@@ -11,7 +11,7 @@ export class SignalingClient {
     this.onPeerLeft = onPeerLeft;
     this.polling = false;
     this.pollTimer = null;
-    this.pollInterval = 400; // ms
+    this.pollInterval = 400; // Check for new messages every 400ms
   }
 
   start() {
@@ -31,7 +31,7 @@ export class SignalingClient {
   async sendSignal(toPeer, type, payload) {
     if (!this.spaceCode) return;
     try {
-      // Inject sender timestamp for precise one-way signaling delay measurement
+      // Attach a timestamp so the receiver can measure delivery time
       const enrichedPayload =
         payload && typeof payload === 'object'
           ? { ...payload, _signalingSentAt: Date.now() }
@@ -57,7 +57,7 @@ export class SignalingClient {
 
       if (data && data.signals && data.signals.length > 0) {
         for (const sig of data.signals) {
-          // Record signaling delay (Time between sending and receiving signaling messages)
+          // Measure how long the message took to arrive
           performanceMetrics.recordSignalingReceived(sig);
 
           if (sig.type === 'peer-joined') {
@@ -72,7 +72,7 @@ export class SignalingClient {
         }
       }
     } catch (err) {
-      // Signaling poll failure / network glitch
+      // Ignore temporary network drops while polling
     }
 
     if (this.polling) {
