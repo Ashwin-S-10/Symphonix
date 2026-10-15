@@ -28,6 +28,15 @@ class Song(models.Model):
 # Curated catalog definitions for the demo tracks
 DEMO_SONGS = [
     {
+        "id": "song-01",
+        "title": "Pirates of the Caribbean",
+        "artist": "Hans Zimmer",
+        "collection": "Instrumental Essentials",
+        "fileName": "Pirates_of_the_Caribbean_2_-_Jack_Sparrow_(mp3.pm).mp3",
+        "fileSize": 14621301,
+        "duration": 365.0
+    },
+    {
         "id": "song-02",
         "title": "Ain't Nobody",
         "artist": "Chaka Khan / Cover",

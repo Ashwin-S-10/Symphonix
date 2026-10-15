@@ -1,6 +1,16 @@
 // Curated catalog definitions for the 20 demo tracks
 export const DEMO_TRACKS = [
   {
+    id: "song-01",
+    title: "Pirates of the Caribbean",
+    artist: "Hans Zimmer",
+    collection: "Instrumental Essentials",
+    fileName: "Pirates_of_the_Caribbean_2_-_Jack_Sparrow_(mp3.pm).mp3",
+    fileSize: 14621301,
+    duration: 365.0,
+    audioUrl: "/audio/Pirates_of_the_Caribbean_2_-_Jack_Sparrow_(mp3.pm).mp3"
+  },
+  {
     id: "song-02",
     title: "Ain't Nobody",
     artist: "Chaka Khan / Cover",
@@ -196,9 +206,9 @@ export const CURATED_COLLECTIONS = [
   {
     id: "all",
     name: "All Demo Tracks",
-    description: "The complete 19-track verified demo catalog ready for streaming.",
+    description: "The complete 20-track verified demo catalog ready for streaming.",
     icon: "music",
-    count: 19
+    count: 20
   },
   {
     id: "tamil-hits",
@@ -214,7 +224,7 @@ export const CURATED_COLLECTIONS = [
     collectionTag: "Instrumental Essentials",
     description: "Orchestral pieces, guitar instrumentals, and atmospheric scores.",
     icon: "disc",
-    count: 7
+    count: 8
   },
   {
     id: "acoustic",
