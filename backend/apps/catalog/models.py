@@ -25,17 +25,8 @@ class Song(models.Model):
             "audioUrl": f"/api/demo-audio/{self.song_id}/"
         }
 
-# Curated catalog definitions for the 20 demo tracks
+# Curated catalog definitions for the demo tracks
 DEMO_SONGS = [
-    {
-        "id": "song-01",
-        "title": "10000 Pax",
-        "artist": "Leo (Original Score)",
-        "collection": "Tamil Hits & Scores",
-        "fileName": "10000-Pax-MassTamilan.dev.mp3",
-        "fileSize": 2707771,
-        "duration": 67.0
-    },
     {
         "id": "song-02",
         "title": "Ain't Nobody",

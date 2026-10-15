@@ -1,16 +1,6 @@
 // Curated catalog definitions for the 20 demo tracks
 export const DEMO_TRACKS = [
   {
-    id: "song-01",
-    title: "10000 Pax",
-    artist: "Leo (Original Score)",
-    collection: "Tamil Hits & Scores",
-    fileName: "10000-Pax-MassTamilan.dev.mp3",
-    fileSize: 2707771,
-    duration: 67.0,
-    audioUrl: "/audio/10000-Pax-MassTamilan.dev.mp3"
-  },
-  {
     id: "song-02",
     title: "Ain't Nobody",
     artist: "Chaka Khan / Cover",
@@ -206,9 +196,9 @@ export const CURATED_COLLECTIONS = [
   {
     id: "all",
     name: "All Demo Tracks",
-    description: "The complete 20-track verified demo catalog ready for streaming.",
+    description: "The complete 19-track verified demo catalog ready for streaming.",
     icon: "music",
-    count: 20
+    count: 19
   },
   {
     id: "tamil-hits",
@@ -216,7 +206,7 @@ export const CURATED_COLLECTIONS = [
     collectionTag: "Tamil Hits & Scores",
     description: "Mass anthems, cinematic climax cues, and emotional melodies.",
     icon: "sparkles",
-    count: 6
+    count: 5
   },
   {
     id: "instrumental",

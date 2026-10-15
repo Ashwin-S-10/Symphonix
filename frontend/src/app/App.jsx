@@ -565,7 +565,7 @@ export default function App() {
                 <div>
                   <h2 className="section-title">Curated Collections</h2>
                   <p className="section-subtitle">
-                    Manually selected demo groups from the 20 verified tracks
+                    Manually selected demo groups from the verified tracks
                   </p>
                 </div>
               </div>
@@ -590,7 +590,7 @@ export default function App() {
                     {CURATED_COLLECTIONS.find((c) => c.id === selectedCollection)?.name || 'Tracks'}
                   </h3>
                   <p className="section-subtitle">
-                    Showing {filteredSongs.length} of 20 playable demo files
+                    Showing {filteredSongs.length} of {songs.length} playable demo files
                   </p>
                 </div>
               </div>
