@@ -1,6 +1,8 @@
 // WebRTC Peer Connection Manager for Symphonix
 // Handles RTCPeerConnection lifecycle, SDP offer/answer negotiation, ICE candidate queuing, and Data Channels.
 
+import { performanceMetrics } from './performanceMetrics';
+
 const DEFAULT_ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
@@ -27,6 +29,7 @@ export class WebRTCManager {
   // Called by Host when a new guest joins the space
   async connectToPeer(remotePeerId) {
     if (this.peers.has(remotePeerId)) return;
+    performanceMetrics.markPeerDiscovered(remotePeerId);
 
     const pc = this._createPeerConnection(remotePeerId);
 
@@ -177,12 +180,20 @@ export class WebRTCManager {
 
   _setupDataChannelEvents(remotePeerId, channelType, channel) {
     channel.onopen = () => {
+      if (channelType === 'control') {
+        // Measure connection setup time
+        performanceMetrics.markConnectionOpen(remotePeerId);
+      }
+
       if (this.onStateChange) {
         this.onStateChange(remotePeerId, 'connected', channelType);
       }
     };
 
     channel.onclose = () => {
+      if (channelType === 'control') {
+        performanceMetrics.markPeerDisconnected(remotePeerId);
+      }
       if (this.onStateChange) {
         this.onStateChange(remotePeerId, 'closed', channelType);
       }
@@ -253,6 +264,10 @@ export class WebRTCManager {
 
   // Close and cleanup
   closeAll() {
+    for (const remotePeerId of this.peers.keys()) {
+      performanceMetrics.markPeerDisconnected(remotePeerId);
+    }
+
     for (const channels of this.channels.values()) {
       if (channels.control) channels.control.close();
       if (channels.transfer) channels.transfer.close();

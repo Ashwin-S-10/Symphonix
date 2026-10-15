@@ -9,7 +9,10 @@ import {
   AlertCircle,
   Activity,
   LogOut,
-  Users
+  Users,
+  BarChart2,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 export default function PeerStatusPanel({
@@ -20,6 +23,7 @@ export default function PeerStatusPanel({
   transferProgress,
   transferResult,
   syncDriftMs,
+  metricsSnapshot,
   onSendTestPing,
   pingResult,
   onTriggerAudioTransfer,
@@ -27,6 +31,7 @@ export default function PeerStatusPanel({
   onLeaveSpace
 }) {
   const [copied, setCopied] = useState(false);
+  const [showMetricsTable, setShowMetricsTable] = useState(false);
 
   if (!activeSpace) return null;
 
@@ -153,13 +158,13 @@ export default function PeerStatusPanel({
         </div>
       )}
 
-      {/* Milestone 4 verification controls */}
+      {/* Controls row */}
       <div className="space-controls-row">
         <button
           className="btn btn-secondary btn-sm"
           onClick={onSendTestPing}
           disabled={!isDataChannelOpen}
-          title="Milestone 4: Send test control message over direct WebRTC DataChannel"
+          title="Send test control message over direct WebRTC DataChannel"
         >
           <Send size={14} />
           <span>Send Test Ping</span>
@@ -170,12 +175,22 @@ export default function PeerStatusPanel({
             className="btn btn-primary btn-sm"
             onClick={onTriggerAudioTransfer}
             disabled={!isDataChannelOpen || isTransferring}
-            title="Milestone 4: Stream active MP3 directly to guest over DataChannel"
+            title="Stream active MP3 directly to guest over DataChannel"
           >
             <DownloadCloud size={14} />
             <span>{isTransferring ? 'Streaming Audio P2P...' : 'Transfer Track P2P'}</span>
           </button>
         )}
+
+        <button
+          className="btn btn-secondary btn-sm"
+          onClick={() => setShowMetricsTable(!showMetricsTable)}
+          title="Toggle view of P2P connection performance metrics"
+        >
+          <BarChart2 size={14} />
+          <span>{showMetricsTable ? 'Hide Metrics' : 'Performance Metrics'}</span>
+          {showMetricsTable ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+        </button>
 
         {pingResult && (
           <span style={{ fontSize: 12, color: 'var(--accent-brand)', fontWeight: 600 }}>
@@ -183,6 +198,55 @@ export default function PeerStatusPanel({
           </span>
         )}
       </div>
+
+      {/* Collapsible Performance Metrics Table */}
+      {showMetricsTable && metricsSnapshot && (
+        <div className="performance-metrics-container">
+          <div className="performance-metrics-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <BarChart2 size={16} color="var(--accent-brand)" />
+              <span style={{ fontWeight: 700, fontSize: 13 }}>P2P Performance Metrics</span>
+            </div>
+          </div>
+
+          <div className="performance-metrics-table-wrapper">
+            <table className="performance-metrics-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '40%' }}>Metric</th>
+                  <th style={{ width: '60%' }}>Measurement</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="metric-title-cell">Connection setup time</td>
+                  <td className="metric-value-cell">{metricsSnapshot.connectionSetupTime}</td>
+                </tr>
+                <tr>
+                  <td className="metric-title-cell">Signaling delay</td>
+                  <td className="metric-value-cell">{metricsSnapshot.signalingDelay}</td>
+                </tr>
+                <tr>
+                  <td className="metric-title-cell">Audio transfer throughput</td>
+                  <td className="metric-value-cell">{metricsSnapshot.audioTransferThroughput}</td>
+                </tr>
+                <tr>
+                  <td className="metric-title-cell">Transfer completion time</td>
+                  <td className="metric-value-cell">{metricsSnapshot.transferCompletionTime}</td>
+                </tr>
+                <tr>
+                  <td className="metric-title-cell">Playback start skew</td>
+                  <td className="metric-value-cell">{metricsSnapshot.playbackStartSkew}</td>
+                </tr>
+                <tr>
+                  <td className="metric-title-cell">Playback drift</td>
+                  <td className="metric-value-cell">{metricsSnapshot.playbackDrift}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

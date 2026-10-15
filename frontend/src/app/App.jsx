@@ -15,6 +15,7 @@ import { SignalingClient } from '../networking/signalingClient';
 import { WebRTCManager } from '../networking/webrtcManager';
 import { AudioTransferService } from '../networking/audioTransfer';
 import { createPingMessage, createPongMessage, MSG_TYPES } from '../networking/protocol';
+import { performanceMetrics } from '../networking/performanceMetrics';
 
 export default function App() {
   // Catalog State
@@ -44,6 +45,14 @@ export default function App() {
   const [isTransferring, setIsTransferring] = useState(false);
   const [pingResult, setPingResult] = useState('');
   const [toastMessage, setToastMessage] = useState('');
+  const [metricsSnapshot, setMetricsSnapshot] = useState(() => performanceMetrics.getMetricsSnapshot());
+
+  // Subscribe to performance metrics updates
+  useEffect(() => {
+    return performanceMetrics.subscribe((snapshot) => {
+      setMetricsSnapshot(snapshot);
+    });
+  }, []);
 
   // Engine & Networking References
   const audioEngineRef = useRef(null);
@@ -230,6 +239,9 @@ export default function App() {
           setIsDataChannelOpen(true);
           showToast(`Direct WebRTC connection established with ${remotePeerId.slice(0, 8)}`);
 
+          // Ensure metrics are recorded
+          performanceMetrics.markConnectionOpen(remotePeerId);
+
           // If host is active, send immediate state snapshot to new peer
           if (isHost && syncControllerRef.current) {
             syncControllerRef.current.sendImmediateSnapshot(remotePeerId);
@@ -359,6 +371,11 @@ export default function App() {
         syncControllerRef.current?.handleStateSnapshot(msg);
         break;
       }
+      case MSG_TYPES.PLAY_ACK: {
+        performanceMetrics.recordPlayAck(remotePeerId, msg.skewMs);
+        showToast(`Peer sync skew: ${msg.skewMs} ms`);
+        break;
+      }
       default:
         break;
     }
@@ -378,6 +395,13 @@ export default function App() {
         displayName: hostDisplayName
       };
 
+      performanceMetrics.setContext({
+        isHost: true,
+        spaceCode: res.code,
+        localPeerId: peerId
+      });
+      performanceMetrics.markHostSpaceCreated(peerId);
+
       setActiveSpace(spaceInfo);
       initializeSpaceNetworking(spaceInfo);
       showToast(`Space created: ${res.code}`);
@@ -389,8 +413,15 @@ export default function App() {
   // Join Space Handler
   const handleJoinSpace = async (spaceCode, guestDisplayName) => {
     setIsCreatingSpace(true);
+    const peerId = `guest-${Date.now()}`;
+    performanceMetrics.markJoinInitiated(peerId);
+    performanceMetrics.setContext({
+      isHost: false,
+      spaceCode,
+      localPeerId: peerId
+    });
+
     try {
-      const peerId = `guest-${Date.now()}`;
       const res = await api.joinSpace(spaceCode, peerId, guestDisplayName);
 
       const spaceInfo = {
@@ -417,6 +448,7 @@ export default function App() {
     signalingClientRef.current?.stop();
     webrtcManagerRef.current?.closeAll();
     syncControllerRef.current?.cleanup();
+    performanceMetrics.reset();
 
     setActiveSpace(null);
     setConnectionState('idle');
@@ -518,6 +550,7 @@ export default function App() {
                 transferProgress={transferProgress}
                 transferResult={transferResult}
                 syncDriftMs={syncDriftMs}
+                metricsSnapshot={metricsSnapshot}
                 onSendTestPing={handleSendTestPing}
                 pingResult={pingResult}
                 onTriggerAudioTransfer={handleTriggerAudioTransfer}

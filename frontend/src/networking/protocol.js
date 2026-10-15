@@ -18,7 +18,8 @@ export const MSG_TYPES = {
   PAUSE: 'PAUSE',
   SEEK: 'SEEK',
   STATE_SNAPSHOT: 'STATE_SNAPSHOT',
-  RESYNC_REQUEST: 'RESYNC_REQUEST'
+  RESYNC_REQUEST: 'RESYNC_REQUEST',
+  PLAY_ACK: 'PLAY_ACK'
 };
 
 // Message Builders
@@ -167,6 +168,20 @@ export function createStateSnapshotMessage(spaceId, trackId, generationId, seque
       audioUrl: track.audioUrl,
       duration: track.duration
     } : null,
+    timestamp: Date.now()
+  };
+}
+
+export function createPlayAckMessage(spaceId, participantId, trackId, generationId, targetStartTime, actualStartTime, skewMs) {
+  return {
+    type: MSG_TYPES.PLAY_ACK,
+    spaceId,
+    participantId,
+    trackId,
+    generationId,
+    targetStartTime,
+    actualStartTime,
+    skewMs,
     timestamp: Date.now()
   };
 }

@@ -3,6 +3,7 @@
 // and reassembles into Blob / Object URL with byte integrity verification.
 
 import { createAudioMetaMessage, createAudioTransferCompleteMessage, createReadyMessage } from './protocol';
+import { performanceMetrics } from './performanceMetrics';
 
 const CHUNK_SIZE = 16384; // 16 KB chunks
 
@@ -31,6 +32,10 @@ export class AudioTransferService {
     const arrayBuffer = await response.arrayBuffer();
     const totalBytes = arrayBuffer.byteLength;
     const chunkCount = Math.ceil(totalBytes / CHUNK_SIZE);
+    const transferKey = `${track.id}-${remotePeerId}-${Date.now()}`;
+    const transferStartTime = performance.now();
+
+    performanceMetrics.recordTransferStart(transferKey, track.id, remotePeerId, totalBytes, 'sender');
 
     // 2. Send AUDIO_META over control channel
     const metaMsg = createAudioMetaMessage(
@@ -73,6 +78,7 @@ export class AudioTransferService {
       }
 
       transferChannel.send(packet.buffer);
+      performanceMetrics.recordChunkSent(remotePeerId, packet.byteLength);
 
       if (this.onTransferProgress) {
         const percent = Math.min(100, Math.round(((i + 1) / chunkCount) * 100));
@@ -90,18 +96,38 @@ export class AudioTransferService {
     const completeMsg = createAudioTransferCompleteMessage(track.id, generationId, totalBytes);
     this.webrtcManager.sendControlMessage(remotePeerId, completeMsg);
 
+    const transferEndTime = performance.now();
+    performanceMetrics.recordTransferComplete(
+      transferKey,
+      track.id,
+      remotePeerId,
+      totalBytes,
+      'sender',
+      transferStartTime,
+      transferEndTime
+    );
+
     return { totalBytes, chunkCount };
   }
 
   // PARTICIPANT: Handles incoming AUDIO_META message
   handleAudioMeta(msg) {
+    const startTime = performance.now();
     this.incomingTransfers.set(msg.trackId, {
       meta: msg,
       chunks: new Array(msg.chunkCount),
       receivedCount: 0,
       receivedBytes: 0,
-      startTime: Date.now()
+      startTime
     });
+
+    performanceMetrics.recordTransferStart(
+      msg.trackId,
+      msg.trackId,
+      this.webrtcManager.peerId,
+      msg.fileSize,
+      'receiver'
+    );
   }
 
   // PARTICIPANT: Handles incoming binary chunk from transfer data channel
@@ -147,6 +173,18 @@ export class AudioTransferService {
     // Verify byte count
     const isIntegrityVerified = blob.size === transfer.meta.fileSize;
     const objectUrl = URL.createObjectURL(blob);
+    const completionTime = performance.now();
+
+    // Record audio transfer throughput and completion time metrics
+    performanceMetrics.recordTransferComplete(
+      msg.trackId,
+      msg.trackId,
+      remotePeerId,
+      transfer.meta.fileSize,
+      'receiver',
+      transfer.startTime,
+      completionTime
+    );
 
     // Acknowledge readiness back to host
     const readyMsg = createReadyMessage(

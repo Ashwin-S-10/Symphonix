@@ -95,6 +95,22 @@ Instructs participants to commence playback at an absolute timestamp.
 }
 ```
 
+#### `PLAY_ACK` (Participant -> Host)
+Participant acknowledges execution of scheduled playback with actual local start timestamp and calculated start skew.
+```json
+{
+  "type": "PLAY_ACK",
+  "spaceId": "string",
+  "participantId": "string",
+  "trackId": "string",
+  "generationId": "string",
+  "targetStartTime": 1728912347000,
+  "actualStartTime": 1728912347004,
+  "skewMs": 4,
+  "timestamp": 1728912347005
+}
+```
+
 #### `PAUSE` (Host -> Participants)
 ```json
 {

@@ -1,4 +1,5 @@
 import { api } from '../services/api';
+import { performanceMetrics } from './performanceMetrics';
 
 export class SignalingClient {
   constructor({ spaceCode, peerId, isHost, onPeerJoined, onSignalReceived, onPeerLeft }) {
@@ -30,7 +31,16 @@ export class SignalingClient {
   async sendSignal(toPeer, type, payload) {
     if (!this.spaceCode) return;
     try {
-      await api.sendSignal(this.spaceCode, this.peerId, toPeer, type, payload);
+      // Inject sender timestamp for precise one-way signaling delay measurement
+      const enrichedPayload =
+        payload && typeof payload === 'object'
+          ? { ...payload, _signalingSentAt: Date.now() }
+          : { data: payload, _signalingSentAt: Date.now() };
+
+      const t0 = performance.now();
+      await api.sendSignal(this.spaceCode, this.peerId, toPeer, type, enrichedPayload);
+      const httpLatency = performance.now() - t0;
+      performanceMetrics.recordSignalingHttpLatency(httpLatency);
     } catch (err) {
       console.error(`Signaling error sending ${type} to ${toPeer}:`, err);
     }
@@ -40,12 +50,21 @@ export class SignalingClient {
     if (!this.polling || !this.spaceCode) return;
 
     try {
+      const t0 = performance.now();
       const data = await api.pollSignals(this.spaceCode, this.peerId);
+      const httpLatency = performance.now() - t0;
+      performanceMetrics.recordSignalingHttpLatency(httpLatency);
+
       if (data && data.signals && data.signals.length > 0) {
         for (const sig of data.signals) {
+          // Record signaling delay (Time between sending and receiving signaling messages)
+          performanceMetrics.recordSignalingReceived(sig);
+
           if (sig.type === 'peer-joined') {
+            performanceMetrics.markPeerDiscovered(sig.fromPeer);
             if (this.onPeerJoined) this.onPeerJoined(sig);
           } else if (sig.type === 'peer-left') {
+            performanceMetrics.markPeerDisconnected(sig.fromPeer);
             if (this.onPeerLeft) this.onPeerLeft(sig);
           } else {
             if (this.onSignalReceived) this.onSignalReceived(sig);

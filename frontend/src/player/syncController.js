@@ -6,8 +6,11 @@ import {
   createScheduledPlayMessage,
   createPauseMessage,
   createSeekMessage,
-  createStateSnapshotMessage
+  createStateSnapshotMessage,
+  createPlayAckMessage,
+  createPingMessage
 } from '../networking/protocol';
+import { performanceMetrics } from '../networking/performanceMetrics';
 
 export class SyncController {
   constructor({ audioEngine, webrtcManager, spaceId, isHost, onDriftCalculated, onTrackChange }) {
@@ -138,8 +141,12 @@ export class SyncController {
     this.audioEngine.seek(pos);
 
     // Host schedules play locally at targetStartTime
+    performanceMetrics.recordScheduledPlayHost(targetStartTime, leadTimeMs);
+
     const delay = Math.max(0, targetStartTime - Date.now());
     setTimeout(() => {
+      const hostActualStart = Date.now();
+      performanceMetrics.recordActualPlayHost(targetStartTime, hostActualStart);
       this.audioEngine.play();
     }, delay);
   }
@@ -255,8 +262,27 @@ export class SyncController {
 
     // Pre-seek immediately so audio decoder buffer is primed at target position
     this.audioEngine.seek(msg.positionSeconds);
+    performanceMetrics.recordScheduledPlayGuest(msg.targetStartTime, localTargetTime);
 
     setTimeout(() => {
+      const guestActualStart = Date.now();
+      const skewMs = Math.round(Math.abs(guestActualStart - localTargetTime));
+      performanceMetrics.recordActualPlayGuest(localTargetTime, guestActualStart, skewMs);
+
+      // Send PLAY_ACK back to host for host metrics recording
+      if (this.webrtcManager) {
+        const ackMsg = createPlayAckMessage(
+          this.spaceId,
+          this.webrtcManager.peerId,
+          msg.trackId,
+          msg.generationId,
+          msg.targetStartTime,
+          guestActualStart,
+          skewMs
+        );
+        this.webrtcManager.broadcastControlMessage(ackMsg);
+      }
+
       this.audioEngine.play();
     }, delay);
   }
@@ -322,6 +348,8 @@ export class SyncController {
     const actualPosition = this.audioEngine.getCurrentTime();
     const driftSeconds = actualPosition - expectedPosition;
     const driftMs = Math.round(driftSeconds * 1000);
+
+    performanceMetrics.recordPlaybackDrift(driftMs);
 
     if (this.onDriftCalculated) {
       this.onDriftCalculated(driftMs);

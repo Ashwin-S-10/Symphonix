@@ -31,3 +31,17 @@
 4. **Sequence and Generation Invariants**:
    - `generationId`: A unique string updated each time a new track is loaded or the space reset. Outdated generation messages are immediately discarded.
    - `sequence`: Monotonically increasing counter per command. Stale commands ($\le \text{lastSequenceSeen}$) are ignored.
+
+5. **Performance Metrics (Frontend UI Telemetry)**:
+   The frontend automatically captures and displays the following core performance metrics in the room's Performance Metrics panel:
+
+   | Metric | Description |
+   |---|---|
+   | **Connection setup time** | Time from join request to data-channel open |
+   | **Signaling delay** | Time between sending and receiving signaling messages |
+   | **Audio transfer throughput** | File size in bytes $\times$ 8 / transfer duration |
+   | **Transfer completion time** | Start of send to completed receiver file |
+   | **Playback start skew** | Difference between host and guest actual playback start times |
+   | **Playback drift** | Difference in playback position over time |
+
+
